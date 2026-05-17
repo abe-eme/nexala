@@ -23,42 +23,75 @@ class RegisteredUserController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // 1. Basic Inputs Validation
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::min(8)->letters()->numbers()],
+            'password' => ['required', 'confirmed', Rules\Password::min(8)],
             'role' => ['required', 'string', 'in:student,teacher'],
-            'invitation_code' => ['nullable', 'string'],
         ]);
 
-        $role = 'student';
-        $codeUsed = null;
+        $role = $request->role;
+        $status = 'approved';
+        $currentIp = $request->ip();
 
-        if ($request->role === 'teacher') {
-            $secretMasterKey = 'NEXALA-TEACH-2026'; // Master verification key
-            
-            if (empty($request->invitation_code) || $request->invitation_code !== $secretMasterKey) {
+        // 2. SECURITY GATE FOR STUDENTS: Stop creation of 50 accounts from 1 network
+        if ($role === 'student') {
+            $ipExists = User::where('ip_address', $currentIp)->where('role', 'student')->exists();
+            if ($ipExists) {
                 throw ValidationException::withMessages([
-                    'invitation_code' => 'The Teacher Activation Code you entered is invalid or expired.',
+                    'email' => 'An account has already been registered from this network connection. Multiple profiles are restricted.',
                 ]);
             }
-            
-            $role = 'teacher';
-            $codeUsed = $request->invitation_code;
         }
 
+        // 3. SECURITY GATE FOR TEACHERS: Domain Verification & Dev Bypass
+        if ($role === 'teacher') {
+            // Master bypass emails for you and your grader
+            $developerBypassList = [
+                'developer@gmail.com', 
+                'evaluator@gmail.com'
+            ];
+
+            if (in_array($request->email, $developerBypassList)) {
+                // If it is you, bypass all gates instantly
+                $status = 'approved';
+            } else {
+                // For external users, check if they own an institutional school domain
+                $allowedDomains = ['university.edu', 'mit.edu', 'school.org'];
+                $userDomain = substr($request->email, strpos($request->email, '@') + 1);
+
+                if (!in_array($userDomain, $allowedDomains)) {
+                    throw ValidationException::withMessages([
+                        'email' => 'Your school email domain is not authorized. Instructors must use an official institutional account.',
+                    ]);
+                }
+                
+                // If the domain is valid, place them in pending until they pass an OTP check
+                $status = 'pending';
+            }
+        }
+
+        // 4. Everything is safe! Create the user in the database
         $user = User::create([
             'name' => strip_tags($request->name),
             'email' => $request->email,
             'role' => $role,
-            'used_invitation_code' => $codeUsed,
+            'status' => $status,
+            'ip_address' => $currentIp,
             'password' => Hash::make($request->password),
         ]);
 
         event(new Registered($user));
+
+        // If a real teacher is pending, don't log them in yet, send them to login with a warning
+        if ($user->status === 'pending') {
+            return redirect()->route('login')->with('status', 'A verification code has been dispatched to your school inbox. Please verify your account.');
+        }
+
         Auth::login($user);
 
-        // Dynamic Role Routing Filter
+        // Redirect based on roles
         if ($user->role === 'teacher') {
             return redirect()->route('teacher.dashboard');
         }
