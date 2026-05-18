@@ -3,23 +3,41 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // 1. MASTER ADMIN ACCOUNT
+        User::create([
+            'name' => 'System Administrator',
+            'email' => 'admin@gmail.com',
+            'role' => 'admin',
+            'status' => 'approved',
+            'ip_address' => '127.0.0.1',
+            'password' => Hash::make('password123'), // Change this in production!
+        ]);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // 2. DEVELOPER / TEACHER BYPASS ACCOUNT (For testing)
+        User::create([
+            'name' => 'Developer Account',
+            'email' => 'developer@gmail.com',
+            'role' => 'teacher',
+            'status' => 'approved',
+            'ip_address' => '127.0.0.1',
+            'password' => Hash::make('password123'),
+        ]);
+        
+        // 3. EVALUATOR BYPASS ACCOUNT (For your grader)
+        User::create([
+            'name' => 'Project Evaluator',
+            'email' => 'evaluator@gmail.com',
+            'role' => 'teacher',
+            'status' => 'approved',
+            'ip_address' => '127.0.0.1',
+            'password' => Hash::make('password123'),
         ]);
     }
 }

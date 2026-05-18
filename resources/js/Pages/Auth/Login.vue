@@ -1,12 +1,10 @@
 <script setup>
-import Checkbox from '@/Components/Checkbox.vue';
-import GuestLayout from '@/Layouts/GuestLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { AlertTriangle, ShieldCheck } from 'lucide-vue-next';
 
 defineProps({
     canResetPassword: {
         type: Boolean,
+        default: true
     },
     status: {
         type: String,
@@ -27,72 +25,89 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestLayout>
-        <Head title="Secure Log In" />
+    <div class="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+        <Head title="Sign In | Nexala" />
 
-        <div class="mb-8 text-center">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/10 mb-3">
-                <ShieldCheck class="w-6 h-6 text-indigo-400" />
-            </div>
-            <h1 class="text-3xl font-black text-white">Secure Access</h1>
-            <p class="text-sm text-slate-300 mt-2">Enter credentials to connect to your profile hub.</p>
-        </div>
-
-        <div v-if="Object.keys(form.errors).length > 0" class="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start space-x-3 text-sm text-red-200">
-            <AlertTriangle class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div>
-                <span class="block font-bold text-red-300 mb-1">Access Suspended</span>
-                <span v-for="(error, key) in form.errors" :key="key" class="block">• {{ error }}</span>
-            </div>
-        </div>
-
-        <form @submit.prevent="submit" class="space-y-6">
-            <div>
-                <label for="email" class="block text-sm font-bold text-white mb-2">Registered Email Address</label>
-                <input
-                    id="email"
-                    type="email"
-                    class="block w-full bg-slate-800/90 border-2 border-slate-700 text-white rounded-xl focus:border-indigo-500 text-base p-3.5 h-12 transition-all placeholder-slate-400"
-                    v-model="form.email"
-                    required
-                    autofocus
-                    placeholder="name@example.com"
-                />
-            </div>
-
-            <div>
-                <div class="flex justify-between items-center mb-2">
-                    <label for="password" class="block text-sm font-bold text-white">Security Password Key</label>
-                    <Link v-if="canResetPassword" :href="route('password.request')" class="text-xs font-bold text-cyan-400 hover:underline">Forgot Password Key?</Link>
+        <!-- Left Side: Creative Branding Panel -->
+        <div class="hidden md:flex md:w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-700 justify-center items-center p-12 text-white relative overflow-hidden">
+            <div class="absolute inset-0 bg-black opacity-10 pointer-events-none"></div>
+            <div class="relative z-10 max-w-md space-y-4">
+                <h1 class="text-5xl font-extrabold tracking-tight">Nexala</h1>
+                <p class="text-lg text-indigo-100 font-medium">
+                    The next-generation smart learning platform for interactive classrooms and modern teaching tools.
+                </p>
+                <div class="pt-6 flex space-x-2">
+                    <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold backdrop-blur-sm">V2.0 Core</span>
+                    <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-semibold backdrop-blur-sm">Secure Network IP-Gate</span>
                 </div>
-                <input
-                    id="password"
-                    type="password"
-                    class="block w-full bg-slate-800/90 border-2 border-slate-700 text-white rounded-xl focus:border-indigo-500 text-base p-3.5 h-12 transition-all placeholder-slate-400"
-                    v-model="form.password"
-                    required
-                    placeholder="••••••••"
-                />
             </div>
+        </div>
 
-            <div class="block py-1">
-                <label class="flex items-center cursor-pointer select-none">
-                    <Checkbox name="remember" v-model:checked="form.remember" class="rounded border-2 border-slate-700 bg-slate-800 text-indigo-600 w-5 h-5" />
-                    <span class="ms-3 text-sm font-semibold text-slate-200">Remember this hardware session</span>
-                </label>
-            </div>
+        <!-- Right Side: Clean Professional Form -->
+        <div class="w-full md:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-white">
+            <div class="w-full max-w-md space-y-8">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">Welcome back</h2>
+                    <p class="mt-2 text-sm text-gray-500">Access your synchronized system dashboard workspace.</p>
+                </div>
 
-            <div class="pt-2">
-                <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-indigo-600/30" :disabled="form.processing">
-                    <span v-if="form.processing">Processing Security Clearance...</span>
-                    <span v-else>Authorize Entry</span>
-                </button>
-            </div>
+                <!-- Status Alerts -->
+                <div v-if="status" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-sm font-medium text-emerald-700 shadow-sm animate-fade-in">
+                    {{ status }}
+                </div>
 
-            <div class="text-center pt-4 border-t border-slate-800 text-sm text-slate-300">
-                Don't have an account yet? 
-                <Link :href="route('register')" class="text-cyan-400 font-bold hover:underline ml-1">Create Account Free &rarr;</Link>
+                <form @submit.prevent="submit" class="space-y-5">
+                    <div>
+                        <label for="email" class="block text-sm font-semibold text-gray-700">Email Address</label>
+                        <div class="mt-1">
+                            <input id="email" type="email" v-model="form.email" required autofocus autocomplete="username"
+                                class="block w-full px-4 py-3 rounded-xl border border-gray-300 shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all" 
+                                placeholder="name@company.com" />
+                        </div>
+                        <p v-if="form.errors.email" class="mt-2 text-sm text-rose-600 font-medium">{{ form.errors.email }}</p>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <label for="password" class="block text-sm font-semibold text-gray-700">Password</label>
+                            <Link v-if="canResetPassword" :href="route('password.request')" class="text-xs font-bold text-indigo-600 hover:text-indigo-500 hover:underline">
+                                Forgot password?
+                            </Link>
+                        </div>
+                        <div class="mt-1">
+                            <input id="password" type="password" v-model="form.password" required autocomplete="current-password"
+                                class="block w-full px-4 py-3 rounded-xl border border-gray-300 shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-all"
+                                placeholder="••••••••" />
+                        </div>
+                        <p v-if="form.errors.password" class="mt-2 text-sm text-rose-600 font-medium">{{ form.errors.password }}</p>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input id="remember" type="checkbox" v-model="form.remember"
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-md transition-all" />
+                        <label for="remember" class="ml-2 block text-sm font-medium text-gray-600 select-none">
+                            Keep me logged in on this device
+                        </label>
+                    </div>
+
+                    <div>
+                        <button type="submit" :disabled="form.processing"
+                            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all transform active:scale-95">
+                            Sign In to Account
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Move Link down below the button action element at the bottom -->
+                <div class="pt-4 border-t border-gray-100 text-center">
+                    <p class="text-sm text-gray-500">
+                        Don't have an account yet? 
+                        <Link :href="route('register')" class="font-bold text-indigo-600 hover:text-indigo-500 hover:underline">
+                            Create one here
+                        </Link>
+                    </p>
+                </div>
             </div>
-        </form>
-    </GuestLayout>
+        </div>
+    </div>
 </template>

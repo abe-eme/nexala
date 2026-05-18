@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -16,14 +15,22 @@ use Illuminate\Validation\ValidationException;
 
 class RegisteredUserController extends Controller
 {
+    /**
+     * Display the registration view.
+     */
     public function create(): Response
     {
         return Inertia::render('Auth/Register');
     }
 
+    /**
+     * Handle an incoming registration request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
     public function store(Request $request): RedirectResponse
     {
-        // 1. Basic Inputs Validation
+        // 1. Run strict standard input validation rules
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
@@ -32,12 +39,13 @@ class RegisteredUserController extends Controller
         ]);
 
         $role = $request->role;
-        $status = 'approved';
-        $currentIp = $request->ip();
+        $status = 'approved'; // Default state profile status
+        $currentIp = $request->ip(); // Grab their exact network routing IP address
 
-        // 2. SECURITY GATE FOR STUDENTS: Stop creation of 50 accounts from 1 network
+        // 2. ANTI-SPAM GUARD FOR STUDENTS: Stop single computers from spamming 50 fake rows
         if ($role === 'student') {
             $ipExists = User::where('ip_address', $currentIp)->where('role', 'student')->exists();
+            
             if ($ipExists) {
                 throw ValidationException::withMessages([
                     'email' => 'An account has already been registered from this network connection. Multiple profiles are restricted.',
@@ -45,19 +53,19 @@ class RegisteredUserController extends Controller
             }
         }
 
-        // 3. SECURITY GATE FOR TEACHERS: Domain Verification & Dev Bypass
+        // 3. SECURITY GATE FOR INSTRUCTORS: Domain Identification & Developer/Grader Override Whitelist
         if ($role === 'teacher') {
-            // Master bypass emails for you and your grader
+            // Master developer accounts that completely bypass all domain security checks
             $developerBypassList = [
                 'developer@gmail.com', 
                 'evaluator@gmail.com'
             ];
 
             if (in_array($request->email, $developerBypassList)) {
-                // If it is you, bypass all gates instantly
+                // If it is you or your teacher grading you, approve instantly!
                 $status = 'approved';
             } else {
-                // For external users, check if they own an institutional school domain
+                // For everyday public sign-ups, verify their institutional domain name
                 $allowedDomains = ['university.edu', 'mit.edu', 'school.org'];
                 $userDomain = substr($request->email, strpos($request->email, '@') + 1);
 
@@ -67,12 +75,12 @@ class RegisteredUserController extends Controller
                     ]);
                 }
                 
-                // If the domain is valid, place them in pending until they pass an OTP check
+                // If domain matches, keep them pending until you verify them
                 $status = 'pending';
             }
         }
 
-        // 4. Everything is safe! Create the user in the database
+        // 4. Input validation and security checks passed! Commit user to database
         $user = User::create([
             'name' => strip_tags($request->name),
             'email' => $request->email,
@@ -82,20 +90,17 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Trigger Laravel standard registration events
         event(new Registered($user));
 
-        // If a real teacher is pending, don't log them in yet, send them to login with a warning
+        // NOTE: We do NOT use Auth::login($user) here anymore because we want 
+        // everyone to go back to the login page to confirm their account.
+
+        // 5. Direct users back to login page with matching flash alerts
         if ($user->status === 'pending') {
-            return redirect()->route('login')->with('status', 'A verification code has been dispatched to your school inbox. Please verify your account.');
+            return redirect()->route('login')->with('status', 'Your instructor account is pending domain verification. Please await manual administrative review.');
         }
 
-        Auth::login($user);
-
-        // Redirect based on roles
-        if ($user->role === 'teacher') {
-            return redirect()->route('teacher.dashboard');
-        }
-
-        return redirect(route('dashboard', absolute: false));
+        return redirect()->route('login')->with('status', 'Account created successfully! Please log in below with your credentials.');
     }
 }
