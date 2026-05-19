@@ -1,148 +1,179 @@
 <script setup>
 import { ref } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
+import TeacherSidebarLayout from '../Layouts/TeacherSidebarLayout.vue';
 
-// Mock data representing incoming self-paced student file submissions
-const props = defineProps({
-    submissions: {
-        type: Array,
-        default: () => [
-            { id: 101, student_name: 'John Doe', course_title: 'Introduction to Full-Stack Web Architectures', file_name: 'final_architecture_lab.pdf', submitted_at: '2026-05-18' },
-            { id: 102, student_name: 'Jane Smith', course_title: 'Relational Database Engine Engineering', file_name: 'indexing_matrix_v2.docx', submitted_at: '2026-05-19' }
-        ]
+// Dummy incoming student submissions data for local visual testing
+const mockSubmissions = ref([
+    {
+        id: 1,
+        student_name: 'Alex Rivera',
+        assignment_title: 'Database Migrations & Core Schema Design',
+        submitted_at: 'May 18, 2026 - 14:32',
+        repo_url: 'https://github.com/alex-dev/nexus-db-milestone',
+        notes: 'I completed all core requirements and set up the foreign key constraint indexes as requested. Please review the database seeder classes.',
+        status: 'pending'
+    },
+    {
+        id: 2,
+        student_name: 'Sophia Chen',
+        assignment_title: 'Vue Single File Components Setup',
+        submitted_at: 'May 19, 2026 - 09:15',
+        repo_url: 'https://github.com/sophia-c/nexus-frontend-views',
+        notes: 'Had a bit of a challenge binding the Tailwind layout state toggles properly, but got it resolved in the final compilation asset bundle.',
+        status: 'pending'
     }
-});
+]);
 
-const activeSubmission = ref(null);
-const gradeScore = ref('');
-const feedbackText = ref('');
+// Selected submission for the active evaluation view
+const selectedSubmission = ref(mockSubmissions.value[0]);
 
 const selectSubmission = (submission) => {
-    activeSubmission.value = submission;
-    gradeScore.value = '';
-    feedbackText.value = '';
+    selectedSubmission.value = submission;
+    form.score = '';
+    form.feedback = '';
 };
 
-const submitEvaluation = () => {
-    if (!gradeScore.value || gradeScore.value < 0 || gradeScore.value > 100) {
-        alert('Please enter a valid evaluation score between 0 and 100.');
-        return;
-    }
+// Inertia Form State Management for Asynchronous Evaluation Processing
+const form = useForm({
+    score: '',
+    feedback: '',
+    status: 'approved'
+});
 
-    router.post(route('teacher.submissions.evaluate', activeSubmission.value.id), {
-        score: gradeScore.value,
-        feedback: feedbackText.value,
-        status: gradeScore.value >= 80 ? 'approved' : 'rejected'
-    }, {
+const submitEvaluation = (id) => {
+    form.post(route('teacher.submissions.evaluate', id), {
         onSuccess: () => {
-            alert('Evaluation submitted successfully. Student progress matrix updated.');
-            activeSubmission.value = null;
+            alert('Evaluation uploaded successfully!');
+            selectedSubmission.value.status = form.status;
         }
     });
 };
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#f8fafc] text-slate-800 p-6 md:p-8 font-sans antialiased text-xs">
-        <Head title="Teacher Evaluation Terminal" />
+    <Head title="Grading Evaluation Terminal" />
 
-        <div class="max-w-7xl mx-auto space-y-6">
-            <!-- Header section -->
-            <div class="border-b pb-4 border-slate-200">
-                <p class="text-[10px] font-mono font-bold text-indigo-600 uppercase tracking-widest">Asynchronous Evaluation Queue</p>
-                <h2 class="text-lg font-black uppercase tracking-tight mt-1">Teacher Assessment Gateway</h2>
+    <TeacherSidebarLayout>
+        <div class="p-8 max-w-7xl mx-auto">
+            <!-- Header Module -->
+            <div class="mb-8">
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">Grading Evaluation Terminal</h1>
+                <p class="text-sm text-slate-500 mt-1">Review student task assets, configure progression flags, and provide engineering feedback.</p>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Left Column: The Live Incoming Queue List -->
-                <div class="lg:col-span-1 border rounded-2xl p-5 bg-white border-slate-200 space-y-4 shadow-xs">
-                    <h3 class="font-bold uppercase tracking-wider text-[11px] text-slate-500">Pending Evaluation Stream</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- LEFT PANEL: Incoming Queue Row Selection List -->
+                <div class="lg:col-span-5 space-y-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Awaiting Assessment</h3>
                     
-                    <div v-if="submissions.length === 0" class="p-8 text-center font-mono text-slate-400 border border-dashed rounded-xl">
-                        Zero pending submissions in queue.
-                    </div>
-
-                    <div v-else class="space-y-2">
+                    <div class="space-y-3">
                         <button 
-                            v-for="sub in submissions" 
+                            v-for="sub in mockSubmissions" 
                             :key="sub.id"
                             @click="selectSubmission(sub)"
-                            type="button"
-                            :class="[activeSubmission?.id === sub.id ? 'border-indigo-600 bg-indigo-50/40' : 'border-slate-200 hover:bg-slate-50']"
-                            class="w-full text-left p-4 border rounded-xl transition-all flex flex-col space-y-2 cursor-pointer"
+                            :class="[selectedSubmission?.id === sub.id ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-white' : 'border-slate-200 hover:border-slate-300 bg-white']"
+                            class="w-full text-left p-5 rounded-xl border transition-all shadow-sm flex flex-col justify-between"
                         >
-                            <div class="flex justify-between items-start">
-                                <span class="font-bold text-slate-900 text-[13px]">{{ sub.student_name }}</span>
-                                <span class="font-mono text-[9px] text-slate-400">{{ sub.submitted_at }}</span>
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-bold text-slate-900 text-sm truncate max-w-[200px]">{{ sub.student_name }}</h4>
+                                <span :class="[sub.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200']" class="text-[10px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wider">
+                                    {{ sub.status }}
+                                </span>
                             </div>
-                            <p class="text-slate-500 font-medium truncate">{{ sub.course_title }}</p>
-                            <span class="font-mono text-[10px] text-indigo-600 underline truncate">📄 {{ sub.file_name }}</span>
+                            <p class="text-xs text-slate-600 font-medium line-clamp-1 mb-3">{{ sub.assignment_title }}</p>
+                            <span class="text-[11px] text-slate-400">Submitted: {{ sub.submitted_at }}</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Right Column: Interactive Grading Canvas Panel -->
-                <div class="lg:col-span-2 border rounded-2xl p-6 bg-white border-slate-200 shadow-xs">
-                    <div v-if="!activeSubmission" class="h-64 flex flex-col items-center justify-center text-center space-y-2 border border-dashed border-slate-200 rounded-xl">
-                        <span class="text-xl">📥</span>
-                        <p class="font-mono text-slate-400 uppercase tracking-wider text-[10px]">Select a student submission from the queue stream to initialize grading evaluation</p>
-                    </div>
-
-                    <div v-else class="space-y-6">
-                        <div class="border-b pb-3 border-slate-100 flex justify-between items-center">
-                            <div>
-                                <h3 class="text-sm font-black uppercase tracking-tight text-slate-900">Evaluating: {{ activeSubmission.student_name }}</h3>
-                                <p class="text-slate-400 text-[11px] mt-0.5">{{ activeSubmission.course_title }}</p>
-                            </div>
-                            <a href="#" class="bg-slate-100 hover:bg-slate-200 font-mono font-bold px-3 py-1.5 rounded-lg text-[9px] uppercase tracking-wider transition-all">
-                                Download File ↓
-                            </a>
+                <!-- RIGHT PANEL: Full Workspace Specification & Interactive Actions Panel -->
+                <div class="lg:col-span-7">
+                    <div v-if="selectedSubmission" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+                        <!-- Submission Core Parameters Info Header -->
+                        <div class="border-b border-slate-100 pb-5">
+                            <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md">Active Evaluation Entry</span>
+                            <h2 class="text-lg font-bold text-slate-900 mt-3">{{ selectedSubmission.student_name }}</h2>
+                            <p class="text-sm text-slate-600 mt-1 font-medium">{{ selectedSubmission.assignment_title }}</p>
                         </div>
 
-                        <!-- Grading Form Block -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div class="md:col-span-1 space-y-2">
-                                <label class="block font-mono font-bold text-slate-500 uppercase tracking-wider">Metric Score (Max 100)</label>
-                                <input 
-                                    v-model="gradeScore"
-                                    type="number" 
-                                    min="0" 
-                                    max="100" 
-                                    placeholder="e.g. 85" 
-                                    class="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-bold text-sm bg-slate-50"
-                                />
+                        <!-- Provided Repository Asset Payload Link -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Project Repository Resource</label>
+                            <div class="flex items-center space-x-2">
+                                <a :href="selectedSubmission.repo_url" target="_blank" class="text-sm text-blue-600 hover:text-blue-700 font-semibold underline flex items-center gap-1.5 break-all">
+                                    <span>🔗</span> {{ selectedSubmission.repo_url }}
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Optional Student Progress Notes Summary -->
+                        <div class="space-y-2" v-if="selectedSubmission.notes">
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Student Submission Notes</label>
+                            <p class="text-xs text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed whitespace-pre-wrap">
+                                "{{ selectedSubmission.notes }}"
+                            </p>
+                        </div>
+
+                        <!-- Interactive Grading Metric Evaluation Input Controls Form Block -->
+                        <form @submit.prevent="submitEvaluation(selectedSubmission.id)" class="border-t border-slate-100 pt-5 space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <!-- Numeric Score Output Field -->
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-bold text-slate-700">Assign Score (0-100)</label>
+                                    <input 
+                                        type="number" 
+                                        v-model="form.score" 
+                                        min="0" 
+                                        max="100" 
+                                        required
+                                        placeholder="e.g. 92"
+                                        class="w-full text-sm border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20 rounded-xl px-4 py-2.5 transition-colors"
+                                    />
+                                </div>
+                                <!-- Progression State Evaluation Toggles -->
+                                <div class="space-y-1.5">
+                                    <label class="text-xs font-bold text-slate-700">Assessment Decision</label>
+                                    <select 
+                                        v-model="form.status" 
+                                        class="w-full text-sm border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20 rounded-xl px-4 py-2.5 transition-colors"
+                                    >
+                                        <option value="approved">Approve & Progress</option>
+                                        <option value="rejected">Request Re-submission</option>
+                                    </select>
+                                </div>
                             </div>
 
-                            <div class="md:col-span-2 space-y-2">
-                                <label class="block font-mono font-bold text-slate-500 uppercase tracking-wider">Qualitative Feedback Matrix</label>
+                            <!-- Constructive Feedback Textarea Input -->
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-bold text-slate-700">Constructive Feedback Rubric</label>
                                 <textarea 
-                                    v-model="feedbackText"
-                                    rows="3" 
-                                    placeholder="Provide detailed engineering feedback regarding code structural optimization or architectural execution..."
-                                    class="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50"
+                                    v-model="form.feedback" 
+                                    rows="4" 
+                                    placeholder="Provide notes on architectural layout, test status vectors, and clean refactoring patterns..."
+                                    class="w-full text-sm border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20 rounded-xl p-4 transition-colors resize-none"
                                 ></textarea>
                             </div>
-                        </div>
 
-                        <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">
+                            <!-- Final Form Execution Trigger Button -->
                             <button 
-                                @click="activeSubmission = null"
-                                type="button" 
-                                class="px-4 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-500 hover:bg-slate-50 cursor-pointer"
+                                type="submit" 
+                                :disabled="form.processing"
+                                class="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold text-sm py-3 px-4 rounded-xl shadow-sm transition-all duration-150 flex items-center justify-center space-x-2"
                             >
-                                Cancel
+                                <span>💾</span>
+                                <span>{{ form.processing ? 'Saving Review Record...' : 'Publish Evaluation Score' }}</span>
                             </button>
-                            <button 
-                                @click="submitEvaluation"
-                                type="button" 
-                                class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-mono font-black tracking-wider uppercase shadow-md shadow-indigo-600/10 cursor-pointer"
-                            >
-                                Commit Grade Decision
-                            </button>
-                        </div>
+                        </form>
+                    </div>
+
+                    <!-- No Selection Placeholder State -->
+                    <div v-else class="h-64 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400">
+                        <span class="text-2xl mb-2">📥</span>
+                        <p class="text-sm font-medium">Select a submission row container from the queue to execute evaluations.</p>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </TeacherSidebarLayout>
 </template>
