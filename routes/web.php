@@ -3,10 +3,16 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\EnsureUserIsAdmin;    
 use App\Http\Middleware\EnsureUserIsTeacher;   
+use App\Http\Controllers\Student\CourseController;
+use App\Http\Controllers\Student\AssignmentController;
+use App\Http\Controllers\Student\DashboardController;
+use App\Http\Controllers\Student\QuizController; 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 // IMPORT DRIVERS FOR EXPORTS
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -30,10 +36,43 @@ Route::get('/', function () {
     ]);
 });
 
-// STUDENT DASHBOARD
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// =========================================================================
+// STUDENT WORKSPACE ROUTE HUB (WIRED DIRECTLY TO CONTROLLERS)
+// =========================================================================
+Route::middleware(['auth', 'verified'])->prefix('student')->name('student.')->group(function () {
+    
+    // Core Dashboard Analytics
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Academic Course Library & Lecture Rooms
+    Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+    Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
+    
+    // Enrollment Engine
+    Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
+    Route::post('/courses/{course}/unenroll', [CourseController::class, 'unenroll'])->name('courses.unenroll');
+    
+    // Lesson Navigation & Progress Tracking
+    Route::get('/courses/{course}/lessons/{lesson}', [CourseController::class, 'showLesson'])->name('lessons.show');
+    Route::post('/lessons/{lesson}/complete', [CourseController::class, 'completeLesson'])->name('lessons.complete');
+
+    // High-Security Quiz Portal (With Anti-Cheat Frontend Synchronization)
+    Route::get('/courses/{course}/quiz', [QuizController::class, 'show'])->name('quizzes.show');
+    Route::post('/courses/{course}/quiz/submit', [QuizController::class, 'submit'])->name('quizzes.submit');
+
+    // Tasks & Assignments Hub (File Upload Views & Submissions)
+    Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
+    Route::get('/courses/{course}/assignment', [AssignmentController::class, 'show'])->name('assignments.show');
+    Route::post('/courses/{course}/assignment/submit', [AssignmentController::class, 'submit'])->name('assignments.submit');
+
+    // Credential Generation Download Engine
+    Route::get('/courses/{course}/certificate/download', [CourseController::class, 'downloadCertificate'])->name('certificate.download');
+});
+
+// FALLBACK ROOT DASHBOARD REDIRECTOR
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 
 // =========================================================================
@@ -47,6 +86,100 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         ]);
     })->name('dashboard');
 
+    // =========================================================================
+    // FULL FIXED: SYNCHRONOUS GRADING EVALUATION TERMINAL (Unified Stream Engine)
+    // =========================================================================
+    Route::get('/submissions', function () {
+        $teacherId = auth()->id();
+
+        // 1. Hydrate File-Based Student Assignment Pipelines
+        $submissions = DB::table('assignment_submissions')
+            ->join('users', 'assignment_submissions.user_id', '=', 'users.id')
+            ->join('courses', 'assignment_submissions.course_id', '=', 'courses.id')
+            ->where('courses.user_id', $teacherId)
+            ->select(
+                'assignment_submissions.*', 
+                'users.name as student_name', 
+                'users.email as student_email', 
+                'courses.title as course_title'
+            )
+            ->orderBy('assignment_submissions.created_at', 'desc')
+            ->get();
+
+        // 2. Hydrate Automated Quiz Performance Audit Trackers
+        $quizAttempts = DB::table('quiz_attempts')
+            ->join('users', 'quiz_attempts.user_id', '=', 'users.id')
+            ->join('courses', 'quiz_attempts.course_id', '=', 'courses.id')
+            ->where('courses.user_id', $teacherId)
+            ->select(
+                'quiz_attempts.*',
+                'users.name as student_name',
+                'users.email as student_email',
+                'courses.title as course_title'
+            )
+            ->orderBy('quiz_attempts.created_at', 'desc')
+            ->get();
+
+        return Inertia::render('Teacher/GradingQueue', [
+            'submissions' => $submissions,
+            'quizAttempts' => $quizAttempts
+        ]);
+    })->name('submissions.index');
+
+    // Process Assignment Feedback Rubrics & Metrics
+    Route::post('/submissions/{id}/evaluate', function ($id, Request $request) {
+        $request->validate([
+            'score' => 'required|integer|min:0|max:100',
+            'feedback' => 'nullable|string',
+            'status' => 'required|in:approved,rejected'
+        ]);
+        
+        DB::table('assignment_submissions')->where('id', $id)->update([
+            'score' => $request->score,
+            'feedback' => $request->feedback,
+            'status' => $request->status,
+            'updated_at' => now()
+        ]);
+        
+        return back();
+    })->name('submissions.evaluate');
+
+    // AUDIT AND OVERWRITE QUIZ PERFORMANCES (FIXED AGAINST 42S22 UNKNOWN COLUMN EXCEPTIONS)
+    Route::post('/quizzes/{id}/evaluate', function ($id, Request $request) {
+        $request->validate([
+            'score' => 'required|integer|min:0|max:100',
+            'feedback' => 'nullable|string',
+            'status' => 'required|string'
+        ]);
+        
+        DB::table('quiz_attempts')->where('id', $id)->update([
+            'score' => $request->score,
+            'feedback' => $request->feedback ?? null, // Prevents blank text-area save strings
+            'status' => (string) $request->status,    // String cast normalization
+            'updated_at' => now()
+        ]);
+        
+        return back();
+    })->name('quizzes.evaluate');
+    // =========================================================================
+
+    // INTEGRATED: SELF-PACED LESSON SEQUENCER RULES ENGINE
+    Route::put('/lessons/{lesson}/update-rules', function (Lesson $lesson, Request $request) {
+        if ($lesson->course->user_id !== auth()->id()) { abort(403); }
+        
+        $validated = $request->validate([
+            'gate_type' => 'required|in:none,time_lock,quiz_pass',
+            'min_time' => 'required|integer|min:0'
+        ]);
+
+        $lesson->update([
+            'gate_type' => $validated['gate_type'],
+            'min_time' => $validated['min_time']
+        ]);
+
+        return back();
+    })->name('lessons.update-rules');
+
     // COURSES MANAGEMENT
     Route::get('/courses', function () {
         return Inertia::render('Teacher/CourseTable', [
@@ -58,7 +191,7 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         return Inertia::render('Teacher/CourseCreate');
     })->name('courses.create');
     
-    Route::post('/courses', function (\Illuminate\Http\Request $request) {
+    Route::post('/courses', function (Request $request) {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'category' => 'required|string|max:255',
@@ -68,7 +201,6 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         return redirect()->route('teacher.courses.index');
     })->name('courses.store');
 
-    // ✅ FIXED: Using exact lowercase path 'Teacher/courseedit' to fix Vite's component compilation crash
     Route::get('/courses/{course}/edit', function (Course $course) {
         if ($course->user_id !== auth()->id()) { abort(403); }
         return Inertia::render('Teacher/courseedit', [
@@ -76,7 +208,7 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         ]);
     })->name('courses.edit');
 
-    Route::put('/courses/{course}', function (Course $course, \Illuminate\Http\Request $request) {
+    Route::put('/courses/{course}', function (Course $course, Request $request) {
         if ($course->user_id !== auth()->id()) { abort(403); }
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -92,7 +224,7 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         return redirect()->route('teacher.courses.index');
     })->name('courses.destroy');
 
-    // 📖 ISOLATED LESSONS/MODULES MANAGEMENT PAGE
+    // ISOLATED LESSONS/MODULES MANAGEMENT PAGE
     Route::get('/courses/{course}/lessons', function (Course $course) {
         if ($course->user_id !== auth()->id()) { abort(403); }
         return Inertia::render('Teacher/Lessons/LessonTable', [
@@ -109,8 +241,7 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         ]);
     })->name('lessons.create');
 
-    // ✅ FIXED: Save Module Button endpoints mapping perfectly
-    Route::post('/courses/{course}/lessons', function (Course $course, \Illuminate\Http\Request $request) {
+    Route::post('/courses/{course}/lessons', function (Course $course, Request $request) {
         if ($course->user_id !== auth()->id()) { abort(403); }
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -141,32 +272,43 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         return back(); 
     })->name('lessons.destroy');
 
-    // 🤖 AI ASSISTANT: GENERATE LESSON CONTENT DRAFT DIRECTLY
-    Route::post('/lessons/generate-content', function (\Illuminate\Http\Request $request) {
-        $request->validate([
-            'title' => 'required|string|max:255',
-        ]);
-
+    // AI ASSISTANT: GENERATE LESSON CONTENT DRAFT DIRECTLY
+    Route::post('/lessons/generate-content', function (Request $request) {
+        $request->validate(['title' => 'required|string|max:255']);
         $title = $request->input('title');
 
         $aiDraft = "## Educational Module Study Guide: {$title}\n\n" .
                    "### 1. Core Foundational Concepts\n" .
-                   "This block breaks down the engineering parameters behind {$title}. Focus on analyzing how modules communicate structural pipelines.\n\n" .
+                   "This block breaks down the engineering parameters behind {$title}.\n\n" .
                    "### 2. Practical Technical Implementations\n" .
-                   "- Implement clean architecture interfaces without unnecessary placeholders.\n" .
                    "- Maintain modular code separation across views and components.\n\n" .
                    "### 3. Verification & Troubleshooting Exercises\n" .
-                   "Review application error handling routines to prevent silent failures during local system runtime.";
+                   "Review application error handling routines to prevent silent failures.";
 
         return response()->json(['content' => $aiDraft]);
     })->name('lessons.ai.generate');
 
-    // ❓ SEPARATED QUIZ MANAGEMENT PAGES
+    // QUIZ ARCHITECTURE BUILDER
     Route::get('/courses/{course}/quizzes', function (Course $course) {
         if ($course->user_id !== auth()->id()) { abort(403); }
+        
+        $attempts = DB::table('quiz_attempts')
+            ->join('users', 'quiz_attempts.user_id', '=', 'users.id')
+            ->where('quiz_attempts.course_id', $course->id)
+            ->select([
+                'quiz_attempts.id as id',
+                'quiz_attempts.score as score',
+                'quiz_attempts.created_at as created_at',
+                'users.name as student_name', 
+                'users.email as student_email'
+            ])
+            ->orderBy('quiz_attempts.created_at', 'desc')
+            ->get();
+
         return Inertia::render('Teacher/Quizzes/Index', [
             'course' => $course,
-            'quizzes' => CourseQuiz::where('course_id', $course->id)->get()
+            'quizzes' => CourseQuiz::where('course_id', $course->id)->get(),
+            'attempts' => $attempts 
         ]);
     })->name('courses.quizzes');
 
@@ -175,7 +317,7 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         return Inertia::render('Teacher/Quizzes/Create', ['course' => $course]);
     })->name('courses.quizzes.create');
 
-    Route::post('/courses/{course}/quizzes', function(Course $course, \Illuminate\Http\Request $request) { 
+    Route::post('/courses/{course}/quizzes', function(Course $course, Request $request) { 
         if ($course->user_id !== auth()->id()) { abort(403); }
         $validated = $request->validate([
             'question_type' => 'required|string',
@@ -191,7 +333,7 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         return redirect()->route('teacher.courses.quizzes', $course->id);
     })->name('courses.quizzes.store');
 
-    // 💼 SEPARATED ASSIGNMENTS PAGES
+    // ASSIGNMENTS MANAGEMENT STRAT
     Route::get('/courses/{course}/assignments', function (Course $course) {
         if ($course->user_id !== auth()->id()) { abort(403); }
         return Inertia::render('Teacher/Assignments/Index', [
@@ -205,55 +347,58 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         return Inertia::render('Teacher/Assignments/Create', ['course' => $course]);
     })->name('courses.assignments.create');
 
-    Route::post('/courses/{course}/assignments', function(Course $course, \Illuminate\Http\Request $request) { 
+    Route::post('/courses/{course}/assignments', function(Course $course, Request $request) { 
         if ($course->user_id !== auth()->id()) { abort(403); }
         $validated = $request->validate(['title' => 'required|string|max:255', 'instructions' => 'required|string']);
         CourseAssignment::create(array_merge($validated, ['course_id' => $course->id]));
         return redirect()->route('teacher.courses.assignments', $course->id);
     })->name('courses.assignments.store');
 
+    // SUBMISSIONS BY ASSIGNMENT
     Route::get('/courses/{course}/assignments/{assignment}/submissions', function (Course $course, CourseAssignment $assignment) {
         if ($course->user_id !== auth()->id()) { abort(403); }
+        
+        $submissions = DB::table('assignment_submissions')
+            ->join('users', 'assignment_submissions.user_id', '=', 'users.id')
+            ->where('assignment_submissions.course_id', $course->id)
+            ->select('assignment_submissions.*', 'users.name as student_name', 'users.email as student_email')
+            ->get();
+
         return Inertia::render('Teacher/Assignments/Submissions', [
             'course' => $course,
             'assignment' => $assignment,
-            'submissions' => [] 
+            'submissions' => $submissions 
         ]);
     })->name('assignments.submissions');
 
-    // 📄 GENERATE & DOWNLOAD ASSIGNMENT AS PDF
+    // GENERATE & DOWNLOAD ASSIGNMENT AS PDF
     Route::get('/assignments/{assignment}/download-pdf', function (CourseAssignment $assignment) {
         if ($assignment->course->user_id !== auth()->id()) { abort(403); }
 
-        $html = "
-            <div style='font-family: sans-serif; padding: 20px;'>
-                <h1 style='color: #0f172a; margin-bottom: 5px; font-size: 24px;'>{$assignment->title}</h1>
-                <p style='color: #64748b; font-size: 12px; margin-bottom: 20px;'>Course Assignment Specification Sheet</p>
-                <hr style='border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;' />
-                <h3 style='color: #334155; font-size: 14px; text-transform: uppercase;'>Instructions Rubric:</h3>
-                <p style='color: #334155; font-size: 13px; line-height: 1.6; white-space: pre-wrap;'>{$assignment->instructions}</p>
-            </div>
-        ";
+        $html = "<div style='font-family: sans-serif; padding: 20px;'>
+                    <h1 style='color: #0f172a; margin-bottom: 5px;'>{$assignment->title}</h1>
+                    <p style='color: #64748b; font-size: 12px;'>Course Assignment Specification Sheet</p>
+                    <hr style='border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;' />
+                    <h3>Instructions Rubric:</h3>
+                    <p style='white-space: pre-wrap;'>{$assignment->instructions}</p>
+                 </div>";
 
         $pdf = Pdf::loadHTML($html);
         return $pdf->download(Str::slug($assignment->title) . '-assignment.pdf');
     })->name('assignments.download.pdf');
 
-    // 📝 GENERATE & DOWNLOAD ASSIGNMENT AS WORD (.DOCX)
+    // GENERATE & DOWNLOAD ASSIGNMENT AS WORD (.DOCX)
     Route::get('/assignments/{assignment}/download-word', function (CourseAssignment $assignment) {
         if ($assignment->course->user_id !== auth()->id()) { abort(403); }
 
         $phpWord = new PhpWord();
         $section = $phpWord->addSection();
-
-        $section->addText($assignment->title, ['name' => 'Arial', 'size' => 20, 'bold' => true, 'color' => '0F172A']);
-        $section->addText("Course Assignment Specification Sheet", ['name' => 'Arial', 'size' => 9, 'italic' => true, 'color' => '64748b']);
+        $section->addText($assignment->title, ['name' => 'Arial', 'size' => 20, 'bold' => true]);
         $section->addTextBreak(1);
-        $section->addText("Instructions Rubric:", ['name' => 'Arial', 'size' => 12, 'bold' => true, 'color' => '334155']);
         
         $lines = explode("\n", $assignment->instructions);
         foreach ($lines as $line) {
-            $section->addText(htmlspecialchars($line), ['name' => 'Arial', 'size' => 11, 'color' => '334155', 'spaceAfter' => 120]);
+            $section->addText(htmlspecialchars($line), ['name' => 'Arial', 'size' => 11]);
         }
 
         $objectWriter = IOFactory::createWriter($phpWord, 'Word2007');
@@ -262,24 +407,13 @@ Route::middleware(['auth', EnsureUserIsTeacher::class])->prefix('teacher')->name
         }, Str::slug($assignment->title) . '-assignment.docx');
     })->name('assignments.download.word');
 
-    // 🤖 AI ASSISTANT: GENERATE ASSIGNMENT INSTRUCTIONS DRAFT
-    Route::post('/assignments/generate-instructions', function (\Illuminate\Http\Request $request) {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'topic' => 'nullable|string|max:255',
-        ]);
-
+    // AI ASSISTANT: GENERATE ASSIGNMENT INSTRUCTIONS DRAFT
+    Route::post('/assignments/generate-instructions', function (Request $request) {
+        $request->validate(['title' => 'required|string|max:255', 'topic' => 'nullable|string|max:255']);
         $title = $request->input('title');
         $topic = $request->input('topic', 'General Course Mechanics');
 
-        $aiDraft = "### Assignment Overview: {$title}\n\n" .
-                   "**Objective:** Develop a practical project covering key aspects of: {$topic}.\n\n" .
-                   "**Requirements:**\n" .
-                   "1. Ensure clean, modular code architectures throughout the design.\n" .
-                   "2. Document all component pipelines clearly.\n" .
-                   "3. Handle all unexpected application runtime states gracefully.\n\n" .
-                   "**Submission Format:** Submit a comprehensive repository link alongside your architecture map documentation.";
-
+        $aiDraft = "### Assignment Overview: {$title}\n\n**Objective:** Project covering: {$topic}.\n\n**Requirements:**\n1. Ensure clean, modular code architectures.";
         return response()->json(['instructions' => $aiDraft]);
     })->name('assignments.ai.generate');
 
@@ -312,13 +446,13 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->name('ad
         ]);
     })->name('dashboard');
 
-    Route::patch('/users/{user}/status', function (\Illuminate\Http\Request $request, User $user) {
+    Route::patch('/users/{user}/status', function (Request $request, User $user) {
         $request->validate(['status' => 'required|in:approved,suspended,pending']);
         $user->update(['status' => $request->status]);
         return back();
     })->name('users.status');
 
-    Route::patch('/courses/{course}/status', function (\Illuminate\Http\Request $request, Course $course) {
+    Route::patch('/courses/{course}/status', function (Request $request, Course $course) {
         $request->validate(['status' => 'required|in:published,rejected,suspended,pending']);
         $course->update(['status' => $request->status]);
         return back();

@@ -56,11 +56,13 @@ const submitProfileUpdate = () => {
 const userStatusForm = useForm({ status: '' });
 const courseStatusForm = useForm({ status: '' });
 
+// Updates user database status and preserves UI scroll position
 const updateUserStatus = (userId, newStatus) => {
     userStatusForm.status = newStatus;
     userStatusForm.patch(route('admin.users.status', userId), { preserveScroll: true });
 };
 
+// Updates course moderation status
 const updateCourseStatus = (courseId, newStatus) => {
     courseStatusForm.status = newStatus;
     courseStatusForm.patch(route('admin.courses.status', courseId), { preserveScroll: true });
@@ -85,7 +87,7 @@ const toggleSidebar = () => {
         
         <Head title="Enterprise Admin Portal" />
 
-        <!-- 🛠️ SOLID PRODUCTION-GRADE SIDEBAR -->
+        <!-- 🛠️ SIDEBAR CONTROLLER -->
         <aside 
             :class="isSidebarExpanded ? 'w-64' : 'w-20'" 
             class="bg-slate-900 flex flex-col justify-between z-20 transition-all duration-300 ease-in-out shrink-0 relative border-r border-slate-800 shadow-xl"
@@ -126,10 +128,6 @@ const toggleSidebar = () => {
                         <span class="text-base w-5 text-center">📚</span> <span v-if="isSidebarExpanded" class="truncate">Course Reviews</span>
                     </button>
 
-                    <button @click="activePage = 'certificates'" :class="activePage === 'certificates' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'" class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm text-left transition-all duration-150">
-                        <span class="text-base w-5 text-center">📜</span> <span v-if="isSidebarExpanded" class="truncate">Issue Certificates</span>
-                    </button>
-
                     <button @click="activePage = 'profile'" :class="activePage === 'profile' ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'" class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm text-left transition-all duration-150">
                         <span class="text-base w-5 text-center">⚙️</span> <span v-if="isSidebarExpanded" class="truncate">Profile Settings</span>
                     </button>
@@ -151,10 +149,10 @@ const toggleSidebar = () => {
             </div>
         </aside>
 
-        <!-- 🖥 captives MAIN WORKSPACE MODULE -->
+        <!-- 🖥 MAIN WORKSPACE MODULE -->
         <main class="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
             
-            <!-- Professional Main Navigation Header -->
+            <!-- Main Navigation Header -->
             <header class="h-20 border-b border-slate-200 bg-white flex items-center justify-between px-6 shadow-sm">
                 <div class="flex items-center space-x-4">
                     <button 
@@ -166,7 +164,7 @@ const toggleSidebar = () => {
                     <h1 class="text-xl font-bold text-slate-900 capitalize tracking-tight">{{ activePage.replace('-', ' ') }} Workspace</h1>
                 </div>
                 
-                <!-- Real-time Network Telemetry Status Overview Drop -->
+                <!-- Telemetry Status Badges -->
                 <div class="flex items-center space-x-3 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 text-xs">
                     <div class="flex items-center space-x-1.5">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -182,10 +180,9 @@ const toggleSidebar = () => {
 
             <div class="p-6 max-w-6xl w-full mx-auto space-y-6">
                 
-                <!-- ==================== PREMIUM REDESIGNED OVERVIEW HUB ==================== -->
+                <!-- ==================== OVERVIEW HUB ==================== -->
                 <div v-if="activePage === 'overview'" class="space-y-6">
-                    
-                    <!-- Advanced Performance Metrics Grid Row -->
+                    <!-- Performance Metrics Grid -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                         <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm flex flex-col justify-between">
                             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Registered Students</p>
@@ -201,7 +198,7 @@ const toggleSidebar = () => {
                         </div>
                     </div>
 
-                    <!-- Direct Administrative Action Routing Banner -->
+                    <!-- Direct Shortcuts -->
                     <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
                         <div>
                             <h4 class="font-bold text-white text-base tracking-tight">System Operational Controls</h4>
@@ -217,61 +214,7 @@ const toggleSidebar = () => {
                         </div>
                     </div>
 
-                    <!-- Live User Dynamic Connection Status Telemetry Table -->
-                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                        <div class="p-5 border-b border-slate-200 bg-slate-50/60 flex justify-between items-center">
-                            <div>
-                                <h3 class="font-bold text-sm text-slate-900">User Network Node Registry</h3>
-                                <p class="text-xs text-slate-500 mt-0.5">Real-time connection monitoring framework for active platform profiles.</p>
-                            </div>
-                            <span class="text-[10px] uppercase font-mono font-bold tracking-widest bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">Live Stream</span>
-                        </div>
-                        
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600">
-                                    <tr>
-                                        <th class="p-4">Account Holder</th>
-                                        <th class="p-4">System Identity</th>
-                                        <th class="p-4">Network Status</th>
-                                        <th class="p-4 text-right">System Context</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
-                                    <tr v-if="users.length === 0">
-                                        <td colspan="4" class="p-8 text-center text-slate-400 italic text-xs">No active nodes registered in core framework tables.</td>
-                                    </tr>
-                                    <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50/50 transition-colors">
-                                        <td class="p-4">
-                                            <div class="font-semibold text-slate-900">{{ user.name }}</div>
-                                            <div class="text-xs text-slate-400 font-mono">{{ user.email }}</div>
-                                        </td>
-                                        <td class="p-4">
-                                            <span class="text-xs font-medium capitalize px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600">
-                                                {{ user.role }}
-                                            </span>
-                                        </td>
-                                        <td class="p-4">
-                                            <!-- High-Fidelity Online/Offline Connection Telemetry Badges -->
-                                            <div v-if="user.is_online" class="inline-flex items-center space-x-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 text-xs font-semibold">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                                                <span>Active Online</span>
-                                            </div>
-                                            <div v-else class="inline-flex items-center space-x-1.5 px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full border border-slate-200 text-xs font-medium">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                                                <span>Disconnected</span>
-                                            </div>
-                                        </td>
-                                        <td class="p-4 text-right text-xs text-slate-400 font-mono">
-                                            {{ user.is_online ? 'Awaiting Interaction' : 'Session Cached' }}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Graphic Analytics Dashboard Row -->
+                    <!-- Analytics Graph Row -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="md:col-span-2 bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
                             <h3 class="font-bold text-sm text-slate-900 mb-6">User Account Signups Growth Chart</h3>
@@ -299,7 +242,7 @@ const toggleSidebar = () => {
                     </div>
                 </div>
 
-                <!-- ==================== TAB 2: EXCLUSIVE TEACHER ONBOARDING LINK PANEL ==================== -->
+                <!-- ==================== TEACHER ONBOARDING LINK PANEL ==================== -->
                 <div v-if="activePage === 'teacher-onboarding'" class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     <div class="p-5 border-b border-slate-200 bg-slate-50">
                         <h3 class="font-bold text-base text-slate-900 tracking-tight">Pending Instructor Application Registries</h3>
@@ -317,6 +260,7 @@ const toggleSidebar = () => {
                             <tbody class="divide-y divide-slate-200 text-sm text-slate-700">
                                 <tr v-if="users.filter(u => u.role === 'teacher' && u.status === 'pending').length === 0">
                                     <td colspan="3" class="p-8 text-center text-slate-400 italic text-xs bg-white">No pending teacher onboarding requests found in database.</td>
+                                    <input type="text" hidden>
                                 </tr>
                                 <tr v-for="teacher in users.filter(u => u.role === 'teacher' && u.status === 'pending')" :key="teacher.id" class="hover:bg-slate-50/60 transition-colors">
                                     <td class="p-4">
@@ -335,7 +279,7 @@ const toggleSidebar = () => {
                     </div>
                 </div>
 
-                <!-- ==================== TAB 3: USER REGISTRY MAIN VIEW ==================== -->
+                <!-- ==================== USER REGISTRY MAIN VIEW ==================== -->
                 <div v-if="activePage === 'users'" class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     <div class="p-4 border-b border-slate-200 bg-slate-50"><h3 class="font-bold text-base text-slate-900">User Accounts Registry</h3></div>
                     <div class="overflow-x-auto">
@@ -357,10 +301,14 @@ const toggleSidebar = () => {
                                     </td>
                                     <td class="p-4 capitalize text-slate-800 font-medium">{{ user?.role }}</td>
                                     <td class="p-4">
-                                        <span :class="user?.status === 'approved' ? 'text-emerald-600' : user?.status === 'pending' ? 'text-amber-600' : 'text-rose-600'" class="text-xs font-bold capitalize">● {{ user?.status }}</span>
+                                        <!-- Dynamic reactive text & badge updates -->
+                                        <span :class="user?.status === 'approved' ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : user?.status === 'pending' ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-rose-600 bg-rose-50 border-rose-200'" class="text-xs font-bold capitalize px-2 py-1 rounded-full border">
+                                            ● {{ user?.status }}
+                                        </span>
                                     </td>
                                     <td class="p-4 text-right space-x-1">
                                         <template v-if="user?.role !== 'admin'">
+                                            <!-- Conditional state switching action triggers -->
                                             <button v-if="user?.status !== 'approved'" :disabled="userStatusForm.processing" @click="updateUserStatus(user.id, 'approved')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow disabled:opacity-50 transition-colors">Approve</button>
                                             <button v-if="user?.status !== 'suspended'" :disabled="userStatusForm.processing" @click="updateUserStatus(user.id, 'suspended')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow disabled:opacity-50 transition-colors">Suspend</button>
                                         </template>
@@ -372,7 +320,7 @@ const toggleSidebar = () => {
                     </div>
                 </div>
 
-                <!-- ==================== TAB 4: COURSE MODERATION SYSTEM ==================== -->
+                <!-- ==================== COURSE MODERATION SYSTEM ==================== -->
                 <div v-if="activePage === 'courses'" class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     <div class="p-4 border-b border-slate-200 bg-slate-50"><h3 class="font-bold text-base text-slate-900">Course Catalog Approvals</h3></div>
                     <div class="overflow-x-auto">
@@ -405,55 +353,24 @@ const toggleSidebar = () => {
                     </div>
                 </div>
 
-                <!-- ==================== TAB 5: CERTIFICATES PANEL ==================== -->
-                <div v-if="activePage === 'certificates'" class="space-y-6">
-                    <div class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
-                        <h3 class="font-bold text-base text-slate-900 mb-1">Issue Official Digital Certificate</h3>
-                        <p class="text-xs text-slate-500">Manually issue a secure passing certificate artifact directly to an elite platform student.</p>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-white border border-slate-200 p-6 rounded-xl space-y-4 shadow-sm">
-                            <h4 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 tracking-wide">Student & Course Identification</h4>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1.5">Select Registered Student Recipient</label>
-                                <select class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500">
-                                    <option value="">-- Choose student from drop list --</option>
-                                    <option v-for="user in users.filter(u => u.role === 'student')" :key="user.id" :value="user.id">{{ user.name }} ({{ user.email }})</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1.5">Select Completed Syllabus Track</label>
-                                <select class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500">
-                                    <option value="">-- Choose verified layout module --</option>
-                                    <option v-for="course in courses" :key="course.id" :value="course.id">{{ course.title }}</option>
-                                </select>
-                            </div>
-                            <button @click="alert('Digital certificate generation successfully triggered')" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-lg transition-colors shadow-sm">Generate and Sign Certificate Record</button>
-                        </div>
-                        <div class="bg-white border border-slate-200 p-8 rounded-xl flex flex-col items-center justify-center text-center space-y-4 min-h-[260px] shadow-sm">
-                            <span class="text-4xl">📜</span>
-                            <h5 class="font-serif text-xl font-bold tracking-wider text-slate-900">Platform Academic Award</h5>
-                            <p class="text-xs text-slate-500 italic max-w-xs">This verifies that the selected student has successfully satisfied all full-stack engineering criteria models.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ==================== TAB 6: ADMIN PROFILE CONTROLS ==================== -->
-                <div v-if="activePage === 'profile'" class="max-w-xl bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                    <div class="p-5 border-b border-slate-200 bg-slate-50">
-                        <h3 class="font-bold text-base text-slate-900">Portal Security Settings</h3>
-                    </div>
-                    <form @submit.prevent="submitProfileUpdate" class="p-5 space-y-4">
+                <!-- ==================== PROFILE SETTINGS PANEL ==================== -->
+                <div v-if="activePage === 'profile'" class="bg-white border border-slate-200 p-6 rounded-xl shadow-sm max-w-2xl">
+                    <h3 class="font-bold text-base text-slate-900 mb-1">Administrative Profile Settings</h3>
+                    <p class="text-xs text-slate-500 mb-6">Modify platform administrator access credentials.</p>
+                    
+                    <form @submit.prevent="submitProfileUpdate" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1.5">Your Full Name Display</label>
-                            <input v-model="profileForm.name" type="text" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-500" />
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5">Administrator Display Name</label>
+                            <input v-model="profileForm.name" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500" required>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1.5">Active Root Email Address</label>
-                            <input v-model="profileForm.email" type="email" required class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-500" />
+                            <label class="block text-xs font-bold text-slate-500 mb-1.5">Secure Gateway Email Endpoint</label>
+                            <input v-model="profileForm.email" type="email" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500" required>
                         </div>
                         <div class="pt-2">
-                            <button type="submit" :disabled="profileForm.processing" class="px-5 py-2.5 bg-blue-600 text-white font-bold text-sm rounded-lg transition-colors shadow-sm">Save Configuration Changes</button>
+                            <button type="submit" :disabled="profileForm.processing" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors shadow-sm">
+                                Save Profile Changes
+                            </button>
                         </div>
                     </form>
                 </div>

@@ -2,51 +2,39 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class User extends Authenticatable
-{
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+class User extends Authenticatable {
+    protected $fillable = ['name', 'email', 'password', 'role', 'status'];
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-   protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'role',
-    'status',
-    'ip_address',
-];
+    public function enrolledCourses(): BelongsToMany {
+        return $this->belongsToMany(Course::class, 'course_user')
+                    ->withPivot('status', 'certificate_status', 'final_grade')
+                    ->withTimestamps();
+    }
+
+    public function completedLessons(): BelongsToMany {
+        return $this->belongsToMany(Lesson::class, 'lesson_user')->withTimestamps();
+    }
+    // app/Models/User.php
+
+// ... Keep your existing filling rules and enrolledCourses code lines
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
+     * Link to all theoretical quiz records submitted by the student.
      */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public function quizSubmissions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->hasMany(QuizSubmission::class);
+    }
+
+    /**
+     * Link to all practical project payloads uploaded by the student.
+     */
+    public function assignmentSubmissions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(AssignmentSubmission::class);
     }
 }
